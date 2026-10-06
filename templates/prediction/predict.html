@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Predict - Fraud Shield AI{% endblock %}
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-search text-info"></i> Transaction Fraud Check</h4>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card p-4">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">{{ form.time_value.label }}</label>
+          {{ form.time_value }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{{ form.amount.label }}</label>
+          {{ form.amount }}
+          {% for error in form.amount.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{{ form.advanced_features.label }}</label>
+          {{ form.advanced_features }}
+          <div class="form-text text-secondary">{{ form.advanced_features.help_text }}</div>
+          {% for error in form.advanced_features.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <button type="submit" class="btn btn-info fw-bold w-100"><i class="bi bi-cpu"></i> Run Fraud Check</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    {% if result %}
+    <div class="card p-4 h-100">
+      <h6 class="text-secondary">RESULT</h6>
+      {% if result.is_fraud %}
+        <h2 class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> FRAUD DETECTED</h2>
+      {% else %}
+        <h2 class="text-success"><i class="bi bi-check-circle-fill"></i> LEGITIMATE</h2>
+      {% endif %}
+      <table class="table table-borderless mt-3 mb-0">
+        <tr><td class="text-secondary">Amount</td><td>${{ result.amount|floatformat:2 }}</td></tr>
+        <tr><td class="text-secondary">Fraud Probability</td><td>{{ result.probability|floatformat:4 }}</td></tr>
+        <tr><td class="text-secondary">Risk Level</td><td><span class="badge badge-risk-{{ result.risk_level|lower }}">{{ result.get_risk_level_display }}</span></td></tr>
+        <tr><td class="text-secondary">Timestamp</td><td>{{ result.created_at }}</td></tr>
+      </table>
+    </div>
+    {% else %}
+    <div class="card p-4 h-100 d-flex align-items-center justify-content-center text-secondary">
+      <i class="bi bi-shield-check" style="font-size:3rem;"></i>
+      <p class="mt-2">Submit a transaction to see the fraud prediction result here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

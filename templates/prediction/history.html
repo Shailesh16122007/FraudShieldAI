@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}History - Fraud Shield AI{% endblock %}
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-clock-history text-info"></i> Prediction History</h4>
+
+<div class="card p-3 mb-3">
+  <form method="get" class="row g-2">
+    <div class="col-md-4">
+      <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Search by exact amount...">
+    </div>
+    <div class="col-md-3">
+      <select name="risk" class="form-select">
+        <option value="">All Risk Levels</option>
+        <option value="LOW" {% if risk_filter == "LOW" %}selected{% endif %}>Low</option>
+        <option value="MEDIUM" {% if risk_filter == "MEDIUM" %}selected{% endif %}>Medium</option>
+        <option value="HIGH" {% if risk_filter == "HIGH" %}selected{% endif %}>High</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="outcome" class="form-select">
+        <option value="">All Outcomes</option>
+        <option value="fraud" {% if outcome_filter == "fraud" %}selected{% endif %}>Fraud only</option>
+        <option value="legit" {% if outcome_filter == "legit" %}selected{% endif %}>Legitimate only</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-info w-100" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>#</th><th>Amount</th><th>Prediction</th><th>Probability</th><th>Risk</th><th>Source</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        {% for p in predictions %}
+        <tr>
+          <td>{{ p.id }}</td>
+          <td>${{ p.amount|floatformat:2 }}</td>
+          <td>{% if p.is_fraud %}<span class="badge badge-fraud">Fraud</span>{% else %}<span class="badge badge-legit">Legitimate</span>{% endif %}</td>
+          <td>{{ p.probability|floatformat:3 }}</td>
+          <td><span class="badge badge-risk-{{ p.risk_level|lower }}">{{ p.get_risk_level_display }}</span></td>
+          <td class="text-secondary small">{{ p.source }}</td>
+          <td>{{ p.created_at|date:"M d, Y H:i" }}</td>
+          <td>
+            <form method="post" action="{% url 'prediction:delete_prediction' p.id %}" onsubmit="return confirm('Delete this prediction?');">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-secondary py-4">No predictions match your filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

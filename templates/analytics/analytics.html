@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Analytics - Fraud Shield AI{% endblock %}
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-graph-up-arrow text-info"></i> Analytics Dashboard</h4>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card accent-info"><div class="text-secondary small">Total Predictions</div><div class="stat-value">{{ total_predictions }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card accent-danger"><div class="text-secondary small">Fraud Count</div><div class="stat-value">{{ fraud_count }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card accent-success"><div class="text-secondary small">Legitimate Count</div><div class="stat-value">{{ legit_count }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card accent-warn"><div class="text-secondary small">Best Model Accuracy</div><div class="stat-value">{% if best_accuracy %}{{ best_accuracy }}%{% else %}N/A{% endif %}</div></div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6>Prediction Trend (last 14 days)</h6>
+      <canvas id="trendChart" height="180"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6>Fraud vs Legitimate</h6>
+      <canvas id="fraudPie" height="180"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Model Comparison {% if best_model_name %}&mdash; Best: <span class="text-info">{{ best_model_name }}</span>{% endif %}</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1 Score</th><th>ROC-AUC</th></tr></thead>
+      <tbody>
+        {% for row in model_rows %}
+        <tr {% if row.is_best %}class="table-active"{% endif %}>
+          <td>{{ row.name }} {% if row.is_best %}<span class="badge bg-info text-dark">BEST</span>{% endif %}</td>
+          <td>{{ row.accuracy }}%</td>
+          <td>{{ row.precision }}%</td>
+          <td>{{ row.recall }}%</td>
+          <td>{{ row.f1_score }}%</td>
+          <td>{{ row.roc_auc }}%</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-secondary py-3">No model metrics found. Run <code>python ml/train.py</code>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Recent Predictions</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>#</th><th>Amount</th><th>Result</th><th>Probability</th><th>When</th></tr></thead>
+      <tbody>
+        {% for p in recent_predictions %}
+        <tr>
+          <td>{{ p.id }}</td><td>${{ p.amount|floatformat:2 }}</td>
+          <td>{% if p.is_fraud %}<span class="badge badge-fraud">Fraud</span>{% else %}<span class="badge badge-legit">Legitimate</span>{% endif %}</td>
+          <td>{{ p.probability|floatformat:3 }}</td>
+          <td>{{ p.created_at|date:"M d, H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-secondary py-3">No predictions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trendCtx = document.getElementById('trendChart');
+new Chart(trendCtx, {
+  type: 'line',
+  data: {
+    labels: {{ trend_labels_json|safe }},
+    datasets: [
+      { label: 'Total Predictions', data: {{ trend_total_json|safe }}, borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.15)', tension: 0.3, fill: true },
+      { label: 'Fraud Flagged', data: {{ trend_fraud_json|safe }}, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.15)', tension: 0.3, fill: true }
+    ]
+  },
+  options: { responsive: true, plugins: { legend: { labels: { color: '#e5edf5' } } },
+    scales: { x: { ticks: { color: '#9fb3cc' } }, y: { ticks: { color: '#9fb3cc' }, beginAtZero: true } } }
+});
+
+const pieCtx = document.getElementById('fraudPie');
+new Chart(pieCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Fraud', 'Legitimate'],
+    datasets: [{ data: [{{ fraud_count }}, {{ legit_count }}], backgroundColor: ['#ef4444', '#22c55e'] }]
+  },
+  options: { responsive: true, plugins: { legend: { labels: { color: '#e5edf5' } } } }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}CSV Upload - Fraud Shield AI{% endblock %}
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-file-earmark-arrow-up text-info"></i> Bulk CSV Fraud Screening</h4>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card p-4">
+      <p class="text-secondary small">Upload a CSV with columns <code>Time, V1-V28, Amount</code> (a <code>Class</code> column, if present, is ignored). Every row is screened for fraud and a downloadable results file is generated.</p>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-3">
+          {{ form.csv_file }}
+          <div class="form-text text-secondary">{{ form.csv_file.help_text }}</div>
+          {% for error in form.csv_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <button type="submit" class="btn btn-info fw-bold w-100"><i class="bi bi-cloud-upload"></i> Upload &amp; Screen</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Recent Uploads</div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>File</th><th>Rows</th><th>Fraud</th><th></th></tr></thead>
+          <tbody>
+            {% for u in recent_uploads %}
+            <tr>
+              <td>{{ u.original_filename }}</td>
+              <td>{{ u.total_rows }}</td>
+              <td><span class="badge badge-fraud">{{ u.fraud_count }}</span></td>
+              <td><a href="{% url 'prediction:upload_result' u.id %}" class="btn btn-sm btn-outline-info">View</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-secondary py-3">No uploads yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

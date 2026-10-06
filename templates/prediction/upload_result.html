@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Upload Results - FraudWatch Technical Intelligence{% endblock %}
+{% block page_title %}Batch Evaluation Results{% endblock %}
+{% block content %}
+<div class="card mb-4" style="border: 2px solid #2563eb;">
+  <div class="card-header-flex">
+    <div>
+      <h2 style="font-size: 20px; font-weight: 800; color: #1e3a8a; margin-bottom: 4px;">
+        <i class="bi bi-file-earmark-check-fill" style="color: #2563eb; margin-right: 8px;"></i>
+        Results: {{ uploaded.original_filename }}
+      </h2>
+      <div style="font-size: 13px; color: #64748b;">
+        Processed every transaction through the trained Support Vector Machine (SVM) model.
+      </div>
+    </div>
+    <a href="{% url 'prediction:download_result' uploaded.id %}" class="btn-primary-block" style="width: auto; padding: 10px 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+      <i class="bi bi-download"></i> Download Annotated Results CSV
+    </a>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px;">
+    <div style="background: #eff6ff; padding: 16px; border-radius: 12px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Screened</div>
+      <div style="font-size: 24px; font-weight: 800; color: #1e3a8a; margin-top: 4px;">{{ uploaded.total_rows }}</div>
+    </div>
+    <div style="background: #dcfce7; padding: 16px; border-radius: 12px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase;">Legitimate Rows</div>
+      <div style="font-size: 24px; font-weight: 800; color: #15803d; margin-top: 4px;">{{ uploaded.total_rows|add:"-"|add:uploaded.fraud_count }}</div>
+    </div>
+    <div style="background: #fee2e2; padding: 16px; border-radius: 12px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #b91c1c; text-transform: uppercase;">Fraud Flagged</div>
+      <div style="font-size: 24px; font-weight: 800; color: #b91c1c; margin-top: 4px;">{{ uploaded.fraud_count }}</div>
+    </div>
+    <div style="background: #f8fafc; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Uploaded Date</div>
+      <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 8px;">{{ uploaded.uploaded_at|date:"M d, Y • H:i" }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title" style="margin-bottom: 16px;">Evaluated Transactions Preview (First 50 Rows)</div>
+  <div class="table-responsive">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          {% for key in preview_rows.0.keys %}
+            <th>{{ key }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in preview_rows %}
+        <tr>
+          {% for key, value in row.items %}
+            <td>
+              {% if key == "Prediction" %}
+                {% if value == "Fraud" %}
+                  <span class="badge-status fraud"><i class="bi bi-dot"></i> Fraud</span>
+                {% else %}
+                  <span class="badge-status legitimate"><i class="bi bi-dot"></i> Legitimate</span>
+                {% endif %}
+              {% elif key == "Probability" %}
+                <div class="progress-bar-container">
+                  <div class="progress-track"><div class="progress-fill blue" style="width: {{ value|floatformat:2 }}%;"></div></div>
+                  <span style="font-size: 12px; font-weight: 700;">{{ value|floatformat:2 }}</span>
+                </div>
+              {% else %}
+                {{ value }}
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="10" class="text-center py-4 text-muted">No preview rows available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

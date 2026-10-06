@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Fraud Shield AI{% endblock %}
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-speedometer2 text-info"></i> Dashboard Overview</h4>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card accent-info">
+      <div class="d-flex justify-content-between">
+        <div>
+          <div class="text-secondary small">Total Predictions</div>
+          <div class="stat-value">{{ total_predictions }}</div>
+        </div>
+        <i class="bi bi-bar-chart-line" style="font-size:2rem;"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card accent-danger">
+      <div class="d-flex justify-content-between">
+        <div>
+          <div class="text-secondary small">Fraud Detected</div>
+          <div class="stat-value">{{ fraud_count }}</div>
+        </div>
+        <i class="bi bi-exclamation-triangle" style="font-size:2rem;"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card accent-success">
+      <div class="d-flex justify-content-between">
+        <div>
+          <div class="text-secondary small">Legitimate</div>
+          <div class="stat-value">{{ legit_count }}</div>
+        </div>
+        <i class="bi bi-check-circle" style="font-size:2rem;"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6><i class="bi bi-search text-info"></i> Run a Prediction</h6>
+      <p class="text-secondary small">Check a single transaction for fraud risk manually.</p>
+      <a href="{% url 'prediction:predict' %}" class="btn btn-info">Go to Predict</a>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6><i class="bi bi-file-earmark-arrow-up text-info"></i> Bulk CSV Upload</h6>
+      <p class="text-secondary small">Upload a transaction CSV and screen every row at once.</p>
+      <a href="{% url 'prediction:upload' %}" class="btn btn-outline-info">Go to Upload</a>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">Recent Predictions</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>#</th><th>Amount</th><th>Result</th><th>Probability</th><th>Risk</th><th>When</th></tr></thead>
+      <tbody>
+        {% for p in recent_predictions %}
+        <tr>
+          <td>{{ p.id }}</td>
+          <td>${{ p.amount|floatformat:2 }}</td>
+          <td>{% if p.is_fraud %}<span class="badge badge-fraud">Fraud</span>{% else %}<span class="badge badge-legit">Legitimate</span>{% endif %}</td>
+          <td>{{ p.probability|floatformat:3 }}</td>
+          <td><span class="badge badge-risk-{{ p.risk_level|lower }}">{{ p.get_risk_level_display }}</span></td>
+          <td>{{ p.created_at|date:"M d, H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-secondary py-3">No predictions yet. Run your first check above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
