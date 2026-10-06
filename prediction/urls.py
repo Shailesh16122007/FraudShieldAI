@@ -13,8 +13,12 @@ urlpatterns = [
 
     # JSON REST APIs
     path("api/predict/", views.api_predict, name="api_predict"),
+    path("api/sample/", views.api_sample, name="api_sample"),
     path("api/upload/", views.api_upload, name="api_upload"),
     path("api/history/", views.api_history, name="api_history"),
-    path("api/export-csv/", views.api_export_csv, name="api_export_csv"),
+    path("api/history/clear/", views.api_clear_history, name="api_clear_history"),
+    path("api/history/<int:pk>/", views.api_prediction_detail, name="api_prediction_detail"),
+    path("api/history/<int:pk>/flag/", views.api_toggle_flag, name="api_toggle_flag"),
     path("api/history/<int:pk>/delete/", views.api_delete_prediction, name="api_delete_prediction"),
+    path("api/export-csv/", views.api_export_csv, name="api_export_csv"),
 ]

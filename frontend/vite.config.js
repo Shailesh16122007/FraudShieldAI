@@ -1,26 +1,18 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+const backend = { target: 'http://127.0.0.1:8000', changeOrigin: false };
+
+export default defineConfig(({ command }) => ({
+  // The production build is served by Django under /static/ (see fraudshield/settings.py).
+  base: command === 'build' ? '/static/' : '/',
+  build: { chunkSizeWarningLimit: 800 },
   server: {
     port: 5173,
-    host: '0.0.0.0',
     proxy: {
-      '/accounts': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-      '/prediction': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-      '/analytics': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
-      '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-      },
+      '/accounts': backend,
+      '/prediction': backend,
+      '/analytics': backend,
+      '/media': backend,
     },
   },
-});
+}));

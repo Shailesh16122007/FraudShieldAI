@@ -4,22 +4,25 @@ A production-style Django + Machine Learning system for detecting fraudulent
 credit card transactions, built as a final-year college project.
 
 ## Features
-- Manual single-transaction fraud check
-- Bulk CSV upload → screens every row → downloadable results CSV
-- Prediction history with search / filter / delete
-- Analytics dashboard: totals, fraud trend chart, model comparison table
+- Dashboard: live totals, fraud rate, screening volume (daily / weekly / monthly), high-risk alerts
+- Manual single-transaction check, with "load a real sample" to fill V1–V28
+- Bulk CSV upload → screens every row → downloadable annotated results CSV
+- Prediction history: search (`TRX-000123` or amount), filters, pagination,
+  detail view, flag for review, delete, CSV export of the filtered list
+- Analytics: classification split, fraud rate over time, risk mix, model
+  benchmark table and confusion matrix of the live model
+- Settings: profile, change password, retrain models, clear history
 - 6 trained ML models compared automatically (Logistic Regression, Decision
   Tree, Random Forest, SVM, KNN, Gaussian Naive Bayes) — best model (by F1)
   is auto-selected for live predictions
-- JSON API: `POST /prediction/api/predict/`, `POST /prediction/upload/`,
-  `GET /prediction/api/history/`, `GET /analytics/api/analytics/`,
-  `POST /analytics/api/train/`, `GET /prediction/upload/<id>/download/`
-- Bootstrap 5 dark "cyber security" themed UI, responsive
-- Django admin for Users / Predictions / UploadedFiles / ModelMetrics
+- Every number in the UI comes from the database / `models/metrics.json` (no mock data)
+- JSON API (login + CSRF protected, each user sees only their own data)
+- Responsive UI (Stitch "Academic Precision" design), works offline — fonts and icons are bundled
+- Django admin for Users / Predictions / UploadedFiles
 
 ## Tech Stack
 Python 3, Django 5, Pandas, NumPy, Scikit-Learn, Imbalanced-Learn, Joblib,
-Bootstrap 5, Chart.js. SQLite by default, MySQL supported via env vars.
+Vite + vanilla JS, Chart.js. SQLite by default, MySQL supported via env vars.
 
 ## 1. Installation
 
@@ -72,13 +75,39 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-## 6. Run
+## 6. Build the frontend (once, and after any change in `frontend/src`)
+
+Needs Node.js 18+.
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+This writes `frontend/dist/`, which Django serves at `/`.
+
+## 7. Run
 
 ```bash
 python manage.py runserver
 ```
 
-Visit `http://127.0.0.1:8000/` and log in.
+Visit `http://127.0.0.1:8000/` and log in. (Restart `runserver` the first time
+after building so Django picks up `frontend/dist`.)
+
+**Frontend development with hot reload:** keep `runserver` running and, in a
+second terminal, run `npm run dev` inside `frontend/`, then open
+`http://localhost:5173/`. API calls are proxied to Django.
+
+The classic server-rendered pages are still available at `/dashboard/`.
+
+## Tests
+
+```bash
+python manage.py test prediction
+```
 
 ## Folder Structure
 
@@ -91,7 +120,8 @@ FraudShieldAI/
 ├── ml/train.py          # preprocessing + training + model comparison
 ├── dataset/creditcard.csv   # <- place the Kaggle dataset here
 ├── models/              # model.pkl, scaler.pkl, metrics.json (generated)
-├── templates/            # Bootstrap 5 dark theme templates
+├── frontend/            # Vite single-page app (src/components = one file per page)
+├── templates/            # classic Django template UI
 ├── static/css/style.css
 ├── requirements.txt
 └── manage.py
@@ -103,6 +133,8 @@ FraudShieldAI/
 - Best model is selected by **F1 score** (not raw accuracy), since fraud
   detection is a highly imbalanced problem where accuracy alone is
   misleading (a model predicting "never fraud" would still score >99%).
+- A transaction is labelled Fraud when its predicted probability is ≥ 50%;
+  risk is HIGH at ≥ 70%, MEDIUM at 30–70%, LOW below 30%.
 - CSV upload was made the primary prediction workflow (rather than manual
   entry of all 30 features) since `V1-V28` are PCA components a real user
   can't meaningfully type in — this mirrors how a bank would actually batch

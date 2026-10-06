@@ -1,11 +1,20 @@
-"""
+﻿"""
 Loads the trained scaler.pkl and model.pkl once (module-level cache) and
-exposes a simple predict() function used by the prediction views.
+exposes predict_single() / predict_batch() used by the prediction views.
+
+The fraud label is derived from the fraud probability (>= 0.5) so that the
+label and the risk level shown in the UI can never contradict each other.
 """
 import os
-import numpy as np
+
 import joblib
+import numpy as np
+import pandas as pd
 from django.conf import settings
+
+FRAUD_THRESHOLD = 0.5
+HIGH_RISK_THRESHOLD = 0.7
+MEDIUM_RISK_THRESHOLD = 0.3
 
 _model = None
 _scaler = None
@@ -16,7 +25,7 @@ class ModelNotTrainedError(Exception):
     pass
 
 
-def _load():
+def load_model():
     global _model, _scaler
     if _model is None or _scaler is None:
         model_path = os.path.join(settings.ML_MODELS_DIR, "model.pkl")
@@ -30,52 +39,58 @@ def _load():
     return _model, _scaler
 
 
+def reload_model():
+    """Drop the cached model so the next prediction loads freshly trained files."""
+    global _model, _scaler
+    _model = None
+    _scaler = None
+
+
 def get_feature_columns():
     return list(_feature_columns)
 
 
 def risk_level_from_probability(prob):
-    if prob >= 0.7:
+    if prob >= HIGH_RISK_THRESHOLD:
         return "HIGH"
-    if prob >= 0.3:
+    if prob >= MEDIUM_RISK_THRESHOLD:
         return "MEDIUM"
     return "LOW"
+
+
+def _fraud_probabilities(model, X_scaled):
+    if hasattr(model, "predict_proba"):
+        return model.predict_proba(X_scaled)[:, 1]
+    return model.predict(X_scaled).astype(float)
 
 
 def predict_single(feature_dict):
     """feature_dict: {"Time": .., "V1": .., ..., "V28": .., "Amount": ..}
     Returns (is_fraud: bool, probability: float, risk_level: str)
     """
-    import pandas as pd
-    model, scaler = _load()
-    row = pd.DataFrame([[feature_dict.get(col, 0.0) for col in _feature_columns]], columns=_feature_columns)
-    row_scaled = scaler.transform(row)
-    pred = model.predict(row_scaled)[0]
-    if hasattr(model, "predict_proba"):
-        prob = model.predict_proba(row_scaled)[0][1]
-    else:
-        prob = float(pred)
-    return bool(pred), float(prob), risk_level_from_probability(float(prob))
+    model, scaler = load_model()
+    row = pd.DataFrame([[float(feature_dict.get(col, 0.0)) for col in _feature_columns]], columns=_feature_columns)
+    prob = float(_fraud_probabilities(model, scaler.transform(row))[0])
+    return prob >= FRAUD_THRESHOLD, prob, risk_level_from_probability(prob)
 
 
 def predict_batch(df):
-    """df: pandas DataFrame containing at least the feature columns.
-    Returns DataFrame with added Prediction, Probability, Risk_Level columns.
+    """df: pandas DataFrame containing the feature columns (missing ones default to 0).
+    Returns a copy with added Prediction, Probability, Risk_Level columns.
     """
-    model, scaler = _load()
+    model, scaler = load_model()
+    df = df.copy()
     for col in _feature_columns:
         if col not in df.columns:
             df[col] = 0.0
-    X = df[_feature_columns]
-    X_scaled = scaler.transform(X)
-    preds = model.predict(X_scaled)
-    if hasattr(model, "predict_proba"):
-        probs = model.predict_proba(X_scaled)[:, 1]
-    else:
-        probs = preds.astype(float)
+    X = df[_feature_columns].apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    probs = _fraud_probabilities(model, scaler.transform(X))
 
-    df = df.copy()
-    df["Prediction"] = np.where(preds == 1, "Fraud", "Legitimate")
+    df["Prediction"] = np.where(probs >= FRAUD_THRESHOLD, "Fraud", "Legitimate")
     df["Probability"] = probs
-    df["Risk_Level"] = [risk_level_from_probability(p) for p in probs]
+    df["Risk_Level"] = np.select(
+        [probs >= HIGH_RISK_THRESHOLD, probs >= MEDIUM_RISK_THRESHOLD],
+        ["HIGH", "MEDIUM"],
+        default="LOW",
+    )
     return df

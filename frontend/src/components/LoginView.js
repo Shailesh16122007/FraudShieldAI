@@ -1,77 +1,83 @@
-// Login View Component matching Image 3
-export function renderLoginView(container, onLoginSuccess) {
-  container.innerHTML = `
-    <div class="login-page-bg">
-      <div class="login-card">
-        <div class="login-logo-badge">
-          <i class="bi bi-shield-lock-fill"></i>
-          <span>Fraud Shield AI</span>
+import { loginUser } from '../services/api.js';
+import { esc, icon, openModal, setBusy } from '../lib/ui.js';
+
+export function renderLoginView(root, onSuccess) {
+  root.innerHTML = `
+    <div class="login-page">
+      <div class="login-hero">
+        <div class="brand brand-lg">
+          <span class="brand-mark">${icon('shield')}</span>
+          <span><span class="brand-title">FraudShield AI</span><span class="brand-sub">Fraud Detection System</span></span>
         </div>
-        <h1 class="login-title">FraudWatch</h1>
-        <div class="login-subtitle">TECHNICAL INTELLIGENCE</div>
-        
-        <h2 class="login-heading">Welcome Back</h2>
-        <p class="login-desc">Please enter your credentials to access the dashboard.</p>
-
-        <form id="login-form" style="width: 100%;">
-          <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <div class="input-with-icon">
-              <i class="bi bi-envelope left-icon"></i>
-              <input type="text" id="login-email" class="custom-input" placeholder="analyst@fraudwatch.ai" value="analyst@fraudwatch.ai" required />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label class="form-label" style="margin-bottom: 0;">Password</label>
-              <a href="#" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: 600;">Forgot?</a>
-            </div>
-            <div class="input-with-icon">
-              <i class="bi bi-lock left-icon"></i>
-              <input type="password" id="login-password" class="custom-input" value="password123" required />
-              <i class="bi bi-eye toggle-pwd" id="toggle-pwd-btn"></i>
-            </div>
-          </div>
-
-          <div class="form-row-between">
-            <label class="checkbox-label">
-              <input type="checkbox" checked /> Remember this device
-            </label>
-          </div>
-
-          <button type="submit" class="btn-primary-block">Login to Dashboard</button>
-        </form>
-
-        <div class="login-footer-links">
-          Internal System. <a href="#">Request access</a><br/>
-          <span style="color: #94a3b8; font-size: 11px;">Privacy Policy &nbsp;·&nbsp; Security Standards</span>
-        </div>
-
-        <div class="academic-footer-text">
-          ACADEMIC RESEARCH PROJECT &copy; 2024
-        </div>
+        <h2>Machine-learning screening for credit card transactions.</h2>
+        <ul class="hero-points">
+          <li>${icon('model_training')}Six classifiers compared — best one by F1 score used live</li>
+          <li>${icon('upload_file')}Screen a single transaction or a whole CSV batch</li>
+          <li>${icon('monitoring')}Risk scores, history, flags and analytics</li>
+        </ul>
       </div>
-    </div>
-  `;
+      <div class="login-panel">
+        <form class="login-card" novalidate>
+          <h1>Welcome back</h1>
+          <p class="muted">Sign in with your FraudShield account.</p>
+          <div class="form-error" role="alert" hidden></div>
+          <label class="field">
+            <span class="field-label">Username</span>
+            <span class="input-icon">${icon('person')}<input name="username" autocomplete="username" required autofocus /></span>
+          </label>
+          <label class="field">
+            <span class="field-label-row"><span class="field-label">Password</span><button type="button" class="link-btn" data-forgot>Forgot password?</button></span>
+            <span class="input-icon">${icon('lock')}<input name="password" type="password" autocomplete="current-password" required />
+              <button type="button" class="input-action" data-toggle-pwd aria-label="Show password">${icon('visibility')}</button>
+            </span>
+          </label>
+          <button type="submit" class="btn btn-primary btn-block btn-lg">Sign in</button>
+          <p class="login-note">${icon('info')}<span>Accounts are created by the administrator with <code>python manage.py createsuperuser</code>.</span></p>
+        </form>
+        <div class="login-foot">Academic machine learning project · ${new Date().getFullYear()}</div>
+      </div>
+    </div>`;
 
-  const pwdInput = container.querySelector('#login-password');
-  const toggleBtn = container.querySelector('#toggle-pwd-btn');
-  toggleBtn.addEventListener('click', () => {
-    if (pwdInput.type === 'password') {
-      pwdInput.type = 'text';
-      toggleBtn.className = 'bi bi-eye-slash toggle-pwd';
-    } else {
-      pwdInput.type = 'password';
-      toggleBtn.className = 'bi bi-eye toggle-pwd';
-    }
+  const form = root.querySelector('form');
+  const errorBox = root.querySelector('.form-error');
+  const pwd = form.password;
+  const toggle = root.querySelector('[data-toggle-pwd]');
+
+  toggle.addEventListener('click', () => {
+    const show = pwd.type === 'password';
+    pwd.type = show ? 'text' : 'password';
+    toggle.innerHTML = icon(show ? 'visibility_off' : 'visibility');
+    toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
 
-  const form = container.querySelector('#login-form');
+  root.querySelector('[data-forgot]').addEventListener('click', () => {
+    openModal({
+      title: 'Reset your password',
+      body: `<p class="modal-text">FraudShield AI runs locally, so there is no email reset. Ask the administrator to run this in the project folder:</p>
+             <pre class="code-block">python manage.py changepassword ${esc(form.username.value.trim() || '<username>')}</pre>`,
+      actions: [{ label: 'OK', variant: 'btn-primary' }],
+    });
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = container.querySelector('#login-email').value;
-    const password = pwdInput.value;
-    onLoginSuccess(email, password);
+    errorBox.hidden = true;
+    const username = form.username.value.trim();
+    if (!username || !pwd.value) {
+      errorBox.textContent = 'Enter your username and password.';
+      errorBox.hidden = false;
+      return;
+    }
+    const btn = form.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Signing in…');
+    try {
+      const res = await loginUser(username, pwd.value);
+      onSuccess(res.user);
+    } catch (err) {
+      setBusy(btn, false);
+      errorBox.textContent = err.message;
+      errorBox.hidden = false;
+      pwd.select();
+    }
   });
 }
